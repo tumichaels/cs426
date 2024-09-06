@@ -1,0 +1,26 @@
+{
+  "name": "CS426: Go Development",
+  "image": "git.cs426.cloud/labs/devenv:latest",
+  "dockerFile": "devenv/Dockerfile",
+  "containerUser": "nonroot",
+  "remoteUser": "nonroot",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "go.toolsManagement.autoUpdate": true,
+        "go.useLanguageServer": true,
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+          "source.organizeImports": true
+        }
+      },
+      "extensions": [
+        "golang.go",
+        "ms-azuretools.vscode-docker"
+      ]
+    }
+  },
+  "mounts": [
+    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+  ]
+}
