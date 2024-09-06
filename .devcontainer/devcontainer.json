@@ -1,9 +1,12 @@
 {
   "name": "CS426: Go Development",
   "image": "git.cs426.cloud/labs/devenv:latest",
-  "dockerFile": "devenv/Dockerfile",
+  // "dockerFile": "devenv/Dockerfile", // only need this if building image locally
   "containerUser": "nonroot",
   "remoteUser": "nonroot",
+  "runArgs": [
+    "--name=cs426_container"
+  ],
   "customizations": {
     "vscode": {
       "settings": {
@@ -12,7 +15,9 @@
         "editor.formatOnSave": true,
         "editor.codeActionsOnSave": {
           "source.organizeImports": true
-        }
+        },
+        "terminal.integrated.cwd": "/home/nonroot/cs426-workdir", // Set terminal starting directory
+        "terminal.integrated.defaultProfile.linux": "bash",
       },
       "extensions": [
         "golang.go",
@@ -21,6 +26,7 @@
     }
   },
   "mounts": [
-    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind",
+    "source=/Users/michaeltu/Classes/Fall-24/cs426/labs/,target=/home/nonroot/cs426-workdir,type=bind"
   ]
 }
