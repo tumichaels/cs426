@@ -1,5 +1,11 @@
 package lab0
 
+import (
+	"context"
+
+	"golang.org/x/sync/semaphore"
+)
+
 // ParallelFetcher manages concurrent fetches of resources that the underlying Fetcher interacts with.
 // The ParallelFetcher imposes an upper limit allowed on the number of concurrent (and parallel) fetches.
 //
@@ -7,9 +13,11 @@ package lab0
 type ParallelFetcher struct {
 	fetcher Fetcher
 	// Add your fields here
+	ctx context.Context
+	sem semaphore.Weighted
 }
 
-// ParallelFetcher ensures that no more than maxConcurrentLimit clients call `Fetcher.Fetch()` at any given time.
+// ParallelFetcher ensures that no more than maxConcurrencyLimit clients call `Fetcher.Fetch()` at any given time.
 // Additional concurrent calls to `ParallelFetcher.Fetch()` should block until the underlying Fetcher
 // becomes available (i.e., one of the previous Fetcher.Fetch() finishes).
 //
@@ -18,6 +26,8 @@ func NewParallelFetcher(fetcher Fetcher, maxConcurrencyLimit int) *ParallelFetch
 	return &ParallelFetcher{
 		fetcher: fetcher,
 		// Add more initialization here
+		ctx: context.Background(),
+		sem: *semaphore.NewWeighted(int64(maxConcurrencyLimit)),
 	}
 }
 
@@ -26,5 +36,9 @@ func NewParallelFetcher(fetcher Fetcher, maxConcurrencyLimit int) *ParallelFetch
 // (which will also return false).
 func (pf *ParallelFetcher) Fetch() (string, bool) {
 	// Add your implementation here
-	return "", false
+	// this definitely doesn't feel right, ask about it later?
+	pf.sem.Acquire(pf.ctx, 1)
+	val, ok := pf.fetcher.Fetch()
+	pf.sem.Release(1)
+	return val, ok
 }

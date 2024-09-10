@@ -1,7 +1,7 @@
 {
   "name": "CS426: Go Development",
-  "image": "git.cs426.cloud/labs/devenv:latest",
-  // "dockerFile": "devenv/Dockerfile", // only need this if building image locally
+  //"image": "git.cs426.cloud/labs/devenv:latest",
+  "dockerFile": "/Users/michaeltu/Classes/Fall-24/cs426/labs/.devcontainer/Dockerfile", // only need this if building image locally
   "containerUser": "nonroot",
   "remoteUser": "nonroot",
   "runArgs": [
