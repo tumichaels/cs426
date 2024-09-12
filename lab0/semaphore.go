@@ -14,7 +14,7 @@ import (
 //     when resources are available
 type Semaphore struct {
 	v      atomic.Int64
-	signal chan struct{}
+	signal chan struct{} // this might not be necessary
 
 	// You may add any other state here. You are also free to remove
 	// or modify any existing members.
@@ -36,12 +36,13 @@ func NewSemaphore() *Semaphore {
 // is that calling Release before any Acquire will panic in semaphore.Weighted,
 // but calling Post() before Wait() should neither block nor panic in our interface.
 func (s *Semaphore) Post() {
-	select {
-	case s.signal <- struct{}{}:
-		// notify waiter (if it exists AND it's listening)
-	default:
-		s.v.Add(1)
-	}
+	s.v.Add(1)
+	// select {
+	// case s.signal <- struct{}{}:
+	// 	// notify waiter (if it exists AND it's listening)
+	// default:
+	// 	s.v.Add(1)
+	// }
 }
 
 // Wait decrements the semaphore value by one, if there are resources
@@ -59,8 +60,8 @@ func (s *Semaphore) Wait(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-s.signal:
-			return nil
+		// case <-s.signal:	// these lines are unnecessary with default?
+		// 	return nil
 		default:
 			val := s.v.Load()
 			if val > 0 {
