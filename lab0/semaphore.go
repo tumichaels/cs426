@@ -36,6 +36,12 @@ func NewSemaphore() *Semaphore {
 // is that calling Release before any Acquire will panic in semaphore.Weighted,
 // but calling Post() before Wait() should neither block nor panic in our interface.
 func (s *Semaphore) Post() {
+	select {
+	case s.signal <- struct{}{}:
+		// notify waiter (if it exists AND it's listening)
+	default:
+		s.v.Add(1)
+	}
 }
 
 // Wait decrements the semaphore value by one, if there are resources
@@ -48,5 +54,19 @@ func (s *Semaphore) Post() {
 //
 // Analagous to Acquire(ctx, 1) in semaphore.Weighted.
 func (s *Semaphore) Wait(ctx context.Context) error {
+	swapped := false
+	for !swapped {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-s.signal:
+			return nil
+		default:
+			val := s.v.Load()
+			if val > 0 {
+				swapped = s.v.CompareAndSwap(val, val-1)
+			}
+		}
+	}
 	return nil
 }
