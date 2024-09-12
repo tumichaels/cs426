@@ -37,7 +37,7 @@ func NewSemaphore() *Semaphore {
 // but calling Post() before Wait() should neither block nor panic in our interface.
 func (s *Semaphore) Post() {
 	s.v.Add(1)
-	// select {
+	// select { // unnecessary with default case?
 	// case s.signal <- struct{}{}:
 	// 	// notify waiter (if it exists AND it's listening)
 	// default:
@@ -60,9 +60,11 @@ func (s *Semaphore) Wait(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		// case <-s.signal:	// these lines are unnecessary with default?
+		// case <-s.signal:	// these lines are unnecessary with default case?
 		// 	return nil
 		default:
+                        // this is correct because there is only 1 thread which can perform
+                        // this decrement
 			val := s.v.Load()
 			if val > 0 {
 				swapped = s.v.CompareAndSwap(val, val-1)
