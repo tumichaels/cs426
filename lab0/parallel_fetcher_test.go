@@ -136,4 +136,36 @@ func TestParallelFetcher(t *testing.T) {
 
 func TestParallelFetcherAdditional(t *testing.T) {
 	// TODO: add your additional tests here
+	t.Run("block until available", func(t *testing.T) {
+		data := []string{"fetch1", "fetch2", "fetch3"}
+		mf := NewMockFetcher(data, 2*time.Second)
+		pf := lab0.NewParallelFetcher(mf, 2)
+
+		done := make(chan struct{})
+		go func() {
+			for {
+				select {
+				case <-done:
+					return
+				default:
+					require.LessOrEqual(t, mf.ActiveFetches(), int32(2))
+				}
+			}
+		}()
+
+		wg := sync.WaitGroup{}
+		for i := 0; i < 3; i++ {
+			wg.Add(1)
+			go func() {
+				v, ok := pf.Fetch()
+				require.True(t, ok)
+				require.NotEmpty(t, v)
+				wg.Done()
+			}()
+		}
+		wg.Wait()
+
+		done <- struct{}{}
+	})
+
 }

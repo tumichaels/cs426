@@ -13,7 +13,6 @@ import (
 type ParallelFetcher struct {
 	fetcher Fetcher
 	// Add your fields here
-	ctx context.Context
 	sem semaphore.Weighted
 }
 
@@ -26,7 +25,6 @@ func NewParallelFetcher(fetcher Fetcher, maxConcurrencyLimit int) *ParallelFetch
 	return &ParallelFetcher{
 		fetcher: fetcher,
 		// Add more initialization here
-		ctx: context.Background(),
 		sem: *semaphore.NewWeighted(int64(maxConcurrencyLimit)),
 	}
 }
@@ -35,9 +33,9 @@ func NewParallelFetcher(fetcher Fetcher, maxConcurrencyLimit int) *ParallelFetch
 // once `false` is returned; *however*, it is OK to have Fetch()s that are already in progress
 // (which will also return false).
 func (pf *ParallelFetcher) Fetch() (string, bool) {
-	// Add your implementation here
-	// this definitely doesn't feel right, ask about it later?
-	pf.sem.Acquire(pf.ctx, 1)
+	if pf.sem.Acquire(context.Background(), 1) != nil {
+		return "", false
+	}
 	val, ok := pf.fetcher.Fetch()
 	pf.sem.Release(1)
 	return val, ok
