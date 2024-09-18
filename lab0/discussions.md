@@ -1,12 +1,12 @@
 # Short Answers
 
-1. Unbuffered channels can contain only 1 message at a time and block on send / receive. Buffered channels can contain up to n messages and only block when sending to a full buffer / reading from empty buffer.
+1. Unbuffered channels can contain only 1 message at a time and block on send / receive. Buffered channels can contain up to $n$ messages and only block when sending to a full buffer / reading from empty buffer.
 
 2. *Unbuffered* channels are the default in go
 
 3. The code deadlocks because the goroutine blocks on send.
 
-4. <-chan, chan<- T, and chan T are read-only, write-only, and read-write channels respectively
+4. `<-chan`, `chan<- T`, and `chan T` are read-only, write-only, and read-write channels respectively
 
 5. Reading from a closed channel fails silently. However, reading from a nil channel causes deadlock.
 
@@ -19,7 +19,7 @@
 
 9. We can use a `sync.WaitGroup` to wait for all the goroutines to finish
 
-10. Semaphores notify all the workers waiting on them, while mutexes do not.
+10. Any thread can notify / increment a semaphore, but a mutex can only be released by the thread that holds it. Additionally, mutexes only permit one thread to access a section of code at a time while semaphores may allow many threads to access it.
 
 11. The code prints: 
 ```

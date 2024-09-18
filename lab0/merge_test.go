@@ -3,6 +3,7 @@ package lab0_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"cs426.cloud/lab0"
 	"github.com/stretchr/testify/require"
@@ -32,7 +33,40 @@ func runMergeTest(t *testing.T, merge mergeFunc) {
 		require.Empty(t, chanToSlice(out))
 	})
 
+	t.Run("1 full channel", func(t *testing.T) {
+		a := make(chan string)
+		b := make(chan string)
+		out := make(chan string)
+		go merge(a, b, out)
+		go func() {
+			a <- "a1"
+			a <- "a2"
+			close(a)
+			close(b)
+		}()
+		// If your lab0 hangs here, make sure you are closing your channels!
+		require.ElementsMatch(t, []string{"a1", "a2"}, chanToSlice(out))
+	})
+
 	// Please write your own tests
+	t.Run("2 full channels", func(t *testing.T) {
+		a := make(chan string)
+		b := make(chan string)
+		out := make(chan string)
+		go merge(a, b, out)
+		go func() {
+			a <- "a1"
+			a <- "a2"
+			close(a)
+		}()
+		go func() {
+			b <- "b1"
+			b <- "b2"
+			close(b)
+		}()
+		// If your lab0 hangs here, make sure you are closing your channels!
+		require.ElementsMatch(t, []string{"a1", "a2", "b1", "b2"}, chanToSlice(out))
+	})
 }
 
 func TestMergeChannels(t *testing.T) {
@@ -91,11 +125,25 @@ type channelFetcher struct {
 	ch chan string
 }
 
+type slowChannelFetcher struct {
+	ch chan string
+}
+
 func newChannelFetcher(ch chan string) *channelFetcher {
 	return &channelFetcher{ch: ch}
 }
 
 func (f *channelFetcher) Fetch() (string, bool) {
+	v, ok := <-f.ch
+	return v, ok
+}
+
+func newSlowChannelFetcher(ch chan string) *slowChannelFetcher {
+	return &slowChannelFetcher{ch: ch}
+}
+
+func (f *slowChannelFetcher) Fetch() (string, bool) {
+	time.Sleep(time.Duration(2) * time.Second)
 	v, ok := <-f.ch
 	return v, ok
 }
@@ -108,4 +156,10 @@ func TestMergeFetches(t *testing.T) {
 
 func TestMergeFetchesAdditional(t *testing.T) {
 	// TODO: add your extra tests here
+	runMergeTest(t, func(a, b, out chan string) {
+		lab0.MergeFetches(newSlowChannelFetcher(a), newChannelFetcher(b), out)
+	})
+	runMergeTest(t, func(a, b, out chan string) {
+		lab0.MergeFetches(newSlowChannelFetcher(a), newSlowChannelFetcher(b), out)
+	})
 }

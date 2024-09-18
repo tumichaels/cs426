@@ -21,6 +21,7 @@ import (
 //   - https://go.dev/tour/concurrency/4
 //   - https://go.dev/tour/concurrency/5
 func MergeChannels[T any](a <-chan T, b <-chan T, out chan<- T) {
+	defer close(out)
 	for {
 		select {
 		case val, ok := <-a:
@@ -38,7 +39,6 @@ func MergeChannels[T any](a <-chan T, b <-chan T, out chan<- T) {
 		}
 
 		if a == nil && b == nil {
-			close(out)
 			return
 		}
 	}
@@ -63,10 +63,10 @@ func MergeChannels[T any](a <-chan T, b <-chan T, out chan<- T) {
 // It is expected that your implemented is similar to `MergeChannels`. You do
 // not need to refactor to deduplicate your code, but you can if you want to.
 func MergeChannelsOrCancel[T any](ctx context.Context, a <-chan T, b <-chan T, out chan<- T) error {
+	defer close(out)
 	for {
 		select {
 		case <-ctx.Done():
-			close(out) // why? -> poorly written spec
 			return ctx.Err()
 		case val, ok := <-a:
 			if ok {
@@ -83,11 +83,9 @@ func MergeChannelsOrCancel[T any](ctx context.Context, a <-chan T, b <-chan T, o
 		}
 
 		if a == nil && b == nil {
-			break
+			return nil
 		}
 	}
-	close(out)
-	return nil
 }
 
 // Fetcher is an interface which mimics fetching from some source
@@ -133,6 +131,7 @@ type Fetcher interface {
 // If you are stuck, consider reading the example for `WaitGroup` here:
 //   - https://pkg.go.dev/sync#example-WaitGroup
 func MergeFetches(a Fetcher, b Fetcher, out chan<- string) {
+	defer close(out)
 	var wg sync.WaitGroup
 	wg.Add(2)
 
@@ -151,5 +150,4 @@ func MergeFetches(a Fetcher, b Fetcher, out chan<- string) {
 	go f(a)
 	go f(b)
 	wg.Wait()
-	close(out)
 }
