@@ -15,7 +15,7 @@ import (
 var (
 	videoRecServiceAddr = flag.String(
 		"video-rec-service",
-		"[::1]:8080",
+		"[::]:8080",
 		"The server address for the VideoRecService in the format of host:port",
 	)
 )

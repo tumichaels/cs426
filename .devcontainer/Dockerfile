@@ -11,7 +11,8 @@ RUN apt-get update && apt-get install -y \
     git \
     sudo \
     vim \
-    wget
+    wget \
+    htop
 
 RUN wget "https://go.dev/dl/go1.23.0.linux-$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" -O /tmp/go.tar.gz && rm -rf /usr/local/go && tar -C /usr/local -xzf /tmp/go.tar.gz
 RUN curl -L "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')/kubectl" -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl

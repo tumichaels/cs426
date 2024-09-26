@@ -34,4 +34,4 @@ true
 
 12. The `struct{}` type is an empty type (it requires no memory). We would want to use `chan struct{}` when we want to use a channel as a signal.
 
-13. In future, preemptive versions of Go, the fix might cause deadlock, as the 3 goroutines would finish before wait is called.
+13. Depending on the scheduling algorithm used in different versions of Go, the output may or may not be printed deterministically as 1, 2, 3.

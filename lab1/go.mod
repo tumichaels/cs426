@@ -1,11 +1,10 @@
 module cs426.yale.edu/lab1
 
-go 1.23
+go 1.23.0
 
 require (
 	github.com/brianvoe/gofakeit/v6 v6.28.0
 	github.com/influxdata/influxdb-client-go/v2 v2.14.0
-	github.com/influxdata/tdigest v0.0.1
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/crypto v0.27.0
 	golang.org/x/time v0.6.0

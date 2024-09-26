@@ -16,12 +16,12 @@ var (
 	port            = flag.Int("port", 8080, "The server port")
 	userServiceAddr = flag.String(
 		"user-service",
-		"[::1]:8081",
+		"[::]:8081",
 		"Server address for the UserService",
 	)
 	videoServiceAddr = flag.String(
 		"video-service",
-		"[::1]:8082",
+		"[::]:8082",
 		"Server address for the VideoService",
 	)
 	maxBatchSize = flag.Int(

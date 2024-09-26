@@ -5,7 +5,8 @@
   "containerUser": "nonroot",
   "remoteUser": "nonroot",
   "runArgs": [
-    "--name=cs426_container"
+    "--name=cs426_container",
+    "--privileged"
   ],
   "customizations": {
     "vscode": {
@@ -16,7 +17,7 @@
         "editor.codeActionsOnSave": {
           "source.organizeImports": true
         },
-        "terminal.integrated.cwd": "/home/nonroot/cs426-workdir", // Set terminal starting directory
+        "terminal.integrated.cwd": "/home/nonroot/labs", // Set terminal starting directory
         "terminal.integrated.defaultProfile.linux": "bash",
       },
       "extensions": [
@@ -27,6 +28,6 @@
   },
   "mounts": [
     "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind",
-    "source=/Users/michaeltu/Classes/Fall-24/cs426/labs/,target=/home/nonroot/cs426-workdir,type=bind"
+    "source=/Users/michaeltu/Classes/Fall-24/cs426/labs/,target=/home/nonroot/labs,type=bind"
   ]
 }

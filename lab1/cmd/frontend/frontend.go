@@ -17,12 +17,12 @@ import (
 var (
 	videoRecServiceAddr = flag.String(
 		"video-rec-service",
-		"[::1]:8080",
+		"[::]:8080",
 		"The server address for the VideoRecService in the format of host:port",
 	)
 	userServiceAddr = flag.String(
 		"user-service",
-		"[::1]:8081",
+		"[::]:8081",
 		"The server address for the UserService in the format of host:port",
 	)
 	netId = flag.String(
@@ -45,7 +45,7 @@ func serviceConn(address string) (*grpc.ClientConn, error) {
 	return grpc.NewClient(address, opts...)
 }
 
-//////// Test client for **Part A6**
+// ////// Test client for **Part A6**
 func fetchUser(userId uint64) {
 	userServiceConn, err := serviceConn(*userServiceAddr)
 	if err != nil {
