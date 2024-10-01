@@ -1,0 +1,16 @@
+apiVersion: cs426.cloud/v1
+kind: LoadgenResult
+metadata:
+  creationTimestamp: "2024-10-01T03:42:44Z"
+  generation: 1
+  name: my-second-loadgen-request
+  namespace: mst45
+  resourceVersion: "22053252"
+  uid: 6aeced2f-a611-42ce-a05e-41cb761ab3ef
+spec:
+  average_latency_ms: 1136.4509
+  duration_s: 60
+  error_msg: ""
+  errors: 0
+  requests: 51
+  stale_responses: 0

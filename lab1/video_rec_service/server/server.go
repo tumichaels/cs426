@@ -24,6 +24,11 @@ var (
 		"[::]:8082",
 		"Server address for the VideoService",
 	)
+	clientPoolSize = flag.Int(
+		"client-pool-size",
+		4,
+		"Number of connections for each service",
+	)
 	maxBatchSize = flag.Int(
 		"batch-size",
 		50,
@@ -48,6 +53,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
+	log.Printf("max batch size: %d\n", *maxBatchSize)
 	s := grpc.NewServer(grpc.UnaryInterceptor(logging.MakeMiddleware(logging.MakeLogger())))
 	server, err := sl.MakeVideoRecServiceServer(sl.VideoRecServiceOptions{
 		UserServiceAddr:  *userServiceAddr,
@@ -55,6 +61,7 @@ func main() {
 		MaxBatchSize:     *maxBatchSize,
 		DisableFallback:  *disableFallback,
 		DisableRetry:     *disableRetry,
+		ClientPoolSize:   *clientPoolSize,
 	})
 	if err != nil {
 		log.Fatalf("failed to start server: %q", err)

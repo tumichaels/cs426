@@ -2,7 +2,7 @@ package server_lib
 
 import (
 	"context"
-	"fmt"
+	"log"
 	"slices"
 	"time"
 
@@ -28,6 +28,8 @@ type VideoRecServiceOptions struct {
 	VideoServiceAddr string
 	// Maximum size of batches sent to UserService and VideoService
 	MaxBatchSize int
+	// Number of clients connections for UserService and VideoService
+	ClientPoolSize int
 	// If set, disable fallback to cache
 	DisableFallback bool
 	// If set, disable all retries
@@ -38,24 +40,62 @@ type VideoRecServiceServer struct {
 	pb.UnimplementedVideoRecServiceServer
 	options VideoRecServiceOptions
 	// Add any data you want here
-	mockUserServiceClient  *umc.MockUserServiceClient
-	mockVideoServiceClient *vmc.MockVideoServiceClient
-	totalRequests          atomic.Uint64
-	totalErrors            atomic.Uint64
-	activeRequests         atomic.Uint64
-	userServiceErrors      atomic.Uint64
-	videoServiceErrors     atomic.Uint64
-	totalTimeMs            atomic.Uint64
-	staleResponses         atomic.Uint64
+	userServiceClient  upb.UserServiceClient
+	videoServiceClient vpb.VideoServiceClient
+
+	totalRequests      atomic.Uint64
+	totalErrors        atomic.Uint64
+	activeRequests     atomic.Uint64
+	userServiceErrors  atomic.Uint64
+	videoServiceErrors atomic.Uint64
+	totalTimeMs        atomic.Uint64
+	staleResponses     atomic.Uint64
 
 	topVideos     []*vpb.VideoInfo
 	topVideosLock sync.RWMutex
 }
 
 func MakeVideoRecServiceServer(options VideoRecServiceOptions) (*VideoRecServiceServer, error) {
+
+	var opts []grpc.DialOption
+	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+	// Get UserService connection
+	userServiceConn, err := grpc.NewClient(options.UserServiceAddr, opts...)
+	if err != nil && !options.DisableRetry {
+		time.Sleep(time.Duration(10) * time.Millisecond)
+		userServiceConn, err = grpc.NewClient(options.UserServiceAddr, opts...)
+	}
+	if err != nil {
+		return nil, status.Errorf(
+			codes.Unavailable,
+			"VideoRecService: could not connect to UserService: %v",
+			err,
+		)
+	}
+
+	// Get VideosService connection
+	videoServiceConn, err := grpc.NewClient(options.VideoServiceAddr, opts...)
+	if err != nil && !options.DisableRetry {
+		time.Sleep(time.Duration(10) * time.Millisecond)
+		userServiceConn, err = grpc.NewClient(options.VideoServiceAddr, opts...)
+	}
+	if err != nil {
+		return nil, status.Errorf(
+			codes.Unavailable,
+			"VideoRecService: could not connect to VideoService: %v",
+			err,
+		)
+	}
+
+	userServiceClient := upb.NewUserServiceClient(userServiceConn)
+	videoServiceClient := vpb.NewVideoServiceClient(videoServiceConn)
+
 	return &VideoRecServiceServer{
 		options: options,
 		// Add any data to initialize here
+		userServiceClient:  userServiceClient,
+		videoServiceClient: videoServiceClient,
 	}, nil
 }
 
@@ -68,8 +108,8 @@ func MakeVideoRecServiceServerWithMocks(
 	return &VideoRecServiceServer{
 		options: options,
 		// ...
-		mockUserServiceClient:  mockUserServiceClient,
-		mockVideoServiceClient: mockVideoServiceClient,
+		userServiceClient:  mockUserServiceClient,
+		videoServiceClient: mockVideoServiceClient,
 	}
 }
 
@@ -95,41 +135,17 @@ func (server *VideoRecServiceServer) GetTopVideos(
 		)
 	}
 
-	// connect to user service and create user service client
-	var userClient upb.UserServiceClient
-	if server.mockUserServiceClient == nil {
-		var opts []grpc.DialOption
-		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
-		userServiceConn, err := grpc.NewClient(server.options.UserServiceAddr, opts...)
-		if err != nil && !server.options.DisableRetry {
-			time.Sleep(time.Duration(10) * time.Millisecond)
-			userServiceConn, err = grpc.NewClient(server.options.UserServiceAddr, opts...)
-		}
-
-		if err != nil {
-			server.totalErrors.Add(1)
-			server.userServiceErrors.Add(1)
-			return nil, status.Errorf(
-				codes.Unavailable,
-				"VideoRecService: could not connect to UserService: %v",
-				err,
-			)
-		}
-		defer userServiceConn.Close()
-		userClient = upb.NewUserServiceClient(userServiceConn)
-	} else {
-		userClient = server.mockUserServiceClient
-	}
+	userClient := server.userServiceClient
 
 	// query for user with retry
 	userResponse, err := userClient.GetUser(ctx, &upb.GetUserRequest{UserIds: []uint64{req.UserId}})
 	if err != nil && !server.options.DisableRetry {
 		time.Sleep(time.Duration(10) * time.Millisecond)
-		fmt.Println("retry initial user query")
+		log.Println("retry initial user query")
 		userResponse, err = userClient.GetUser(ctx, &upb.GetUserRequest{UserIds: []uint64{req.UserId}})
 	}
 	if err != nil {
-		fmt.Println("failed - retry initial user query")
+		log.Println("failed - retry initial user query")
 		server.totalErrors.Add(1)
 		server.userServiceErrors.Add(1)
 		st := status.Convert(err)
@@ -157,12 +173,12 @@ func (server *VideoRecServiceServer) GetTopVideos(
 		// invoke method with retry
 		subscribedToResponse, err := userClient.GetUser(ctx, &upb.GetUserRequest{UserIds: userIds})
 		if err != nil {
-			fmt.Printf("retry userservice query %d\n", i)
+			log.Printf("retry userservice query %d\n", i)
 			time.Sleep(time.Duration(10) * time.Millisecond)
 			subscribedToResponse, err = userClient.GetUser(ctx, &upb.GetUserRequest{UserIds: userIds})
 		}
 		if err != nil {
-			fmt.Printf("failed - retry userservice query %d\n", i)
+			log.Printf("failed - retry userservice query %d\n", i)
 			server.totalErrors.Add(1)
 			server.userServiceErrors.Add(1)
 			st := status.Convert(err)
@@ -181,30 +197,7 @@ func (server *VideoRecServiceServer) GetTopVideos(
 	videosToRank = deduplicateIds(videosToRank)
 
 	// connect to video service and create video service client
-	var videoClient vpb.VideoServiceClient
-	if server.mockVideoServiceClient == nil {
-		var opts []grpc.DialOption
-		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
-		videoServiceConn, err := grpc.NewClient(server.options.VideoServiceAddr, opts...)
-		if err != nil && !server.options.DisableRetry {
-			time.Sleep(time.Duration(10) * time.Millisecond)
-			videoServiceConn, err = grpc.NewClient(server.options.UserServiceAddr, opts...)
-		}
-
-		if err != nil {
-			server.totalErrors.Add(1)
-			server.videoServiceErrors.Add(1)
-			return nil, status.Errorf(
-				codes.Unavailable,
-				"VideoRecService: could not connect to VideoService: %v",
-				err,
-			)
-		}
-		defer videoServiceConn.Close()
-		videoClient = vpb.NewVideoServiceClient(videoServiceConn)
-	} else {
-		videoClient = server.mockVideoServiceClient
-	}
+	videoClient := server.videoServiceClient
 
 	// query for video info about videos to rank
 	// can't do it all in 1 shot ig, so
@@ -320,25 +313,9 @@ func (server *VideoRecServiceServer) ContinuallyRefreshCache() {
 	}
 	// how long to try reconnecting?
 	for {
-		// fmt.Println("refreshing cache")
+		videoClient := server.videoServiceClient
 
-		var videoClient vpb.VideoServiceClient
-		var conn *grpc.ClientConn
-		var err error
-		if server.mockVideoServiceClient == nil {
-			var opts []grpc.DialOption
-			opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
-			conn, err = grpc.NewClient(server.options.VideoServiceAddr, opts...)
-			if err != nil {
-				// wanted to do a different deadline here, but maybe it doesn't matter
-				time.Sleep(time.Duration(10) * time.Millisecond)
-				continue
-			}
-			videoClient = vpb.NewVideoServiceClient(conn) // need to worry about bad connection
-		} else {
-			videoClient = server.mockVideoServiceClient
-		}
-
+		// Query for Trending Videos Ids
 		topVideoIdsResponse, err := videoClient.GetTrendingVideos(context.Background(), &vpb.GetTrendingVideosRequest{})
 		if err != nil {
 			time.Sleep(time.Duration(10) * time.Second)
@@ -347,6 +324,7 @@ func (server *VideoRecServiceServer) ContinuallyRefreshCache() {
 		topVideoIds := topVideoIdsResponse.GetVideos()
 		expirationTimeSec := int64(topVideoIdsResponse.GetExpirationTimeS())
 
+		// Query for Trending Video Infos
 		topVideoInfoResponse, err := videoClient.GetVideo(context.Background(), &vpb.GetVideoRequest{VideoIds: topVideoIds})
 		if err != nil {
 			time.Sleep(time.Duration(10) * time.Second)
@@ -359,12 +337,8 @@ func (server *VideoRecServiceServer) ContinuallyRefreshCache() {
 		server.topVideos = topVideoInfo
 		server.topVideosLock.Unlock()
 
-		if server.mockVideoServiceClient == nil {
-			conn.Close()
-		}
-
 		// sleep until next update time
-		// fmt.Println("cache refreshed")
+		log.Printf("cache refreshed")
 		time.Sleep(time.Until(time.Unix(expirationTimeSec, 0)))
 	}
 }

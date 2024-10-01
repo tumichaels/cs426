@@ -45,4 +45,6 @@ WORKDIR /home/${USER}
 ENV HOME=/home/$USER
 RUN echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.profile
 
+ENV KUBECONFIG=/home/nonroot/labs/lab2/mst45.yaml
+
 CMD ["/bin/bash"]

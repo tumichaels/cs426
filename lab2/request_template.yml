@@ -1,0 +1,9 @@
+apiVersion: cs426.cloud/v1
+kind: LoadgenRequest
+metadata:
+    name: <name-your-loadgen-request-object>
+spec:
+    service_name: video-rec-service
+    target_qps: 4
+    duration_s: 60
+    max_outstanding: 10
