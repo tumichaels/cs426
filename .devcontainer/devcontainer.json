@@ -32,6 +32,6 @@
   },
   "mounts": [
     "type=bind,source=/Users/michaeltu/Classes/Fall-24/cs426/labs/,target=/home/nonroot/labs",
-    "type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock"
+    "type=bind,source=/var/run/docker.sock,target=/var/run/docker-host.sock"
   ]
 }

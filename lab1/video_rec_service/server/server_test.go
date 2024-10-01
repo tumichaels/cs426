@@ -48,6 +48,7 @@ func TestServerBasic(t *testing.T) {
 		MaxBatchSize:    50,
 		DisableFallback: true,
 		DisableRetry:    true,
+		ClientPoolSize:  4,
 	}
 	_, _, vrService := SetUpServers(
 		t,
@@ -82,6 +83,7 @@ func TestUserServiceFailure(t *testing.T) {
 			MaxBatchSize:    50,
 			DisableFallback: true,
 			DisableRetry:    true,
+			ClientPoolSize:  4,
 		}
 		_, _, vrService := SetUpServers(
 			t,
@@ -109,6 +111,7 @@ func TestUserServiceFailure(t *testing.T) {
 			MaxBatchSize:    50,
 			DisableFallback: true,
 			DisableRetry:    true,
+			ClientPoolSize:  4,
 		}
 		_, _, vrService := SetUpServers(
 			t,
@@ -139,6 +142,7 @@ func TestUserServiceFailure(t *testing.T) {
 			MaxBatchSize:    1,
 			DisableFallback: true,
 			DisableRetry:    true,
+			ClientPoolSize:  4,
 		}
 		_, _, vrService := SetUpServers(
 			t,
@@ -169,6 +173,7 @@ func TestVideoServiceFailure(t *testing.T) {
 			MaxBatchSize:    50,
 			DisableFallback: true,
 			DisableRetry:    true,
+			ClientPoolSize:  4,
 		}
 		_, _, vrService := SetUpServers(
 			t,
@@ -202,6 +207,7 @@ func TestRetry(t *testing.T) {
 			MaxBatchSize:    50,
 			DisableFallback: true,
 			DisableRetry:    false,
+			ClientPoolSize:  4,
 		}
 		_, _, vrService := SetUpServers(
 			t,
@@ -245,6 +251,7 @@ func TestRetry(t *testing.T) {
 			MaxBatchSize:    50,
 			DisableFallback: true,
 			DisableRetry:    false,
+			ClientPoolSize:  4,
 		}
 		_, _, vrService := SetUpServers(
 			t,
@@ -277,6 +284,7 @@ func TestRetry(t *testing.T) {
 			MaxBatchSize:    50,
 			DisableFallback: false,
 			DisableRetry:    false,
+			ClientPoolSize:  4,
 		}
 		_, vClient, vrService := SetUpServers(
 			t,

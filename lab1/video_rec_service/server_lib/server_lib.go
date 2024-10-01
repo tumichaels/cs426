@@ -40,8 +40,13 @@ type VideoRecServiceServer struct {
 	pb.UnimplementedVideoRecServiceServer
 	options VideoRecServiceOptions
 	// Add any data you want here
-	userServiceClient  upb.UserServiceClient
-	videoServiceClient vpb.VideoServiceClient
+	userServiceClientPool  []upb.UserServiceClient
+	videoServiceClientPool []vpb.VideoServiceClient
+
+	userServiceIdx      uint64
+	userServiceIdxLock  sync.Mutex
+	videoServiceIdx     uint64
+	videoServiceIdxLock sync.Mutex
 
 	totalRequests      atomic.Uint64
 	totalErrors        atomic.Uint64
@@ -60,42 +65,60 @@ func MakeVideoRecServiceServer(options VideoRecServiceOptions) (*VideoRecService
 	var opts []grpc.DialOption
 	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 
-	// Get UserService connection
-	userServiceConn, err := grpc.NewClient(options.UserServiceAddr, opts...)
-	if err != nil && !options.DisableRetry {
-		time.Sleep(time.Duration(10) * time.Millisecond)
-		userServiceConn, err = grpc.NewClient(options.UserServiceAddr, opts...)
-	}
-	if err != nil {
-		return nil, status.Errorf(
-			codes.Unavailable,
-			"VideoRecService: could not connect to UserService: %v",
-			err,
-		)
+	// Raw connection pools
+	userServiceConns := make([]*grpc.ClientConn, 0, options.ClientPoolSize)
+	videoServiceConns := make([]*grpc.ClientConn, 0, options.ClientPoolSize)
+
+	// Get UserService connections
+	for range options.ClientPoolSize {
+		conn, err := grpc.NewClient(options.UserServiceAddr, opts...)
+		if err != nil && !options.DisableRetry {
+			time.Sleep(time.Duration(10) * time.Millisecond)
+			conn, err = grpc.NewClient(options.UserServiceAddr, opts...)
+		}
+		if err != nil {
+			return nil, status.Errorf(
+				codes.Unavailable,
+				"VideoRecService: could not connect to UserService: %v",
+				err,
+			)
+		}
+		userServiceConns = append(userServiceConns, conn)
 	}
 
 	// Get VideosService connection
-	videoServiceConn, err := grpc.NewClient(options.VideoServiceAddr, opts...)
-	if err != nil && !options.DisableRetry {
-		time.Sleep(time.Duration(10) * time.Millisecond)
-		userServiceConn, err = grpc.NewClient(options.VideoServiceAddr, opts...)
-	}
-	if err != nil {
-		return nil, status.Errorf(
-			codes.Unavailable,
-			"VideoRecService: could not connect to VideoService: %v",
-			err,
-		)
+	for range options.ClientPoolSize {
+		conn, err := grpc.NewClient(options.VideoServiceAddr, opts...)
+		if err != nil && !options.DisableRetry {
+			time.Sleep(time.Duration(10) * time.Millisecond)
+			conn, err = grpc.NewClient(options.VideoServiceAddr, opts...)
+		}
+		if err != nil {
+			return nil, status.Errorf(
+				codes.Unavailable,
+				"VideoRecService: could not connect to VideoService: %v",
+				err,
+			)
+		}
+		videoServiceConns = append(videoServiceConns, conn)
 	}
 
-	userServiceClient := upb.NewUserServiceClient(userServiceConn)
-	videoServiceClient := vpb.NewVideoServiceClient(videoServiceConn)
+	userServiceClientPool := make([]upb.UserServiceClient, 0)
+	videoServiceClientPool := make([]vpb.VideoServiceClient, 0)
+
+	for i := range options.ClientPoolSize {
+		userClient := upb.NewUserServiceClient(userServiceConns[i])
+		userServiceClientPool = append(userServiceClientPool, userClient)
+
+		videoClient := vpb.NewVideoServiceClient(videoServiceConns[i])
+		videoServiceClientPool = append(videoServiceClientPool, videoClient)
+	}
 
 	return &VideoRecServiceServer{
 		options: options,
 		// Add any data to initialize here
-		userServiceClient:  userServiceClient,
-		videoServiceClient: videoServiceClient,
+		userServiceClientPool:  userServiceClientPool,
+		videoServiceClientPool: videoServiceClientPool,
 	}, nil
 }
 
@@ -105,11 +128,19 @@ func MakeVideoRecServiceServerWithMocks(
 	mockVideoServiceClient *vmc.MockVideoServiceClient,
 ) *VideoRecServiceServer {
 	// Implement your own logic here
+	userServiceClientPool := make([]upb.UserServiceClient, 0, options.ClientPoolSize)
+	videoServiceClientPool := make([]vpb.VideoServiceClient, 0, options.ClientPoolSize)
+
+	for range options.ClientPoolSize {
+		userServiceClientPool = append(userServiceClientPool, mockUserServiceClient)
+		videoServiceClientPool = append(videoServiceClientPool, mockVideoServiceClient)
+	}
+
 	return &VideoRecServiceServer{
 		options: options,
 		// ...
-		userServiceClient:  mockUserServiceClient,
-		videoServiceClient: mockVideoServiceClient,
+		userServiceClientPool:  userServiceClientPool,
+		videoServiceClientPool: videoServiceClientPool,
 	}
 }
 
@@ -135,7 +166,7 @@ func (server *VideoRecServiceServer) GetTopVideos(
 		)
 	}
 
-	userClient := server.userServiceClient
+	userClient := server.getNextUserClient()
 
 	// query for user with retry
 	userResponse, err := userClient.GetUser(ctx, &upb.GetUserRequest{UserIds: []uint64{req.UserId}})
@@ -197,7 +228,7 @@ func (server *VideoRecServiceServer) GetTopVideos(
 	videosToRank = deduplicateIds(videosToRank)
 
 	// connect to video service and create video service client
-	videoClient := server.videoServiceClient
+	videoClient := server.getNextVideoClient()
 
 	// query for video info about videos to rank
 	// can't do it all in 1 shot ig, so
@@ -313,7 +344,7 @@ func (server *VideoRecServiceServer) ContinuallyRefreshCache() {
 	}
 	// how long to try reconnecting?
 	for {
-		videoClient := server.videoServiceClient
+		videoClient := server.getNextVideoClient()
 
 		// Query for Trending Videos Ids
 		topVideoIdsResponse, err := videoClient.GetTrendingVideos(context.Background(), &vpb.GetTrendingVideosRequest{})
@@ -368,4 +399,24 @@ func getVideoRanks(
 	}
 
 	return rankMap
+}
+
+func (server *VideoRecServiceServer) getNextUserClient() upb.UserServiceClient {
+	server.userServiceIdxLock.Lock()
+	defer server.userServiceIdxLock.Unlock()
+
+	client := server.userServiceClientPool[server.userServiceIdx]
+	server.userServiceIdx = (server.userServiceIdx + 1) % uint64(server.options.ClientPoolSize)
+
+	return client
+}
+
+func (server *VideoRecServiceServer) getNextVideoClient() vpb.VideoServiceClient {
+	server.videoServiceIdxLock.Lock()
+	defer server.videoServiceIdxLock.Unlock()
+
+	client := server.videoServiceClientPool[server.videoServiceIdx]
+	server.videoServiceIdx = (server.videoServiceIdx + 1) % uint64(server.options.ClientPoolSize)
+
+	return client
 }
