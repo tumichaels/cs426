@@ -1,0 +1,16 @@
+apiVersion: cs426.cloud/v1
+kind: LoadgenResult
+metadata:
+  creationTimestamp: "2024-10-01T18:09:16Z"
+  generation: 1
+  name: 1-conn-loadgen-request
+  namespace: mst45
+  resourceVersion: "22570660"
+  uid: 933e76e9-e4d6-43a7-b695-3cfd1218e296
+spec:
+  average_latency_ms: 1014.0196
+  duration_s: 60
+  error_msg: ""
+  errors: 0
+  requests: 51
+  stale_responses: 0

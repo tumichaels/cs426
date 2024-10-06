@@ -1,7 +1,7 @@
 apiVersion: cs426.cloud/v1
 kind: LoadgenRequest
 metadata:
-    name: 8-conn-loadgen-request
+    name: 4-conn-loadgen-request
 spec:
     service_name: video-rec-service
     target_qps: 4

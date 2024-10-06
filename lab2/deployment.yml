@@ -25,5 +25,6 @@ spec:
             - "--batch-size=50"
             - "--user-service=user-service.default:8081"
             - "--video-service=video-service.default:8082"
+            - "--client-pool-size=1"
           imagePullPolicy: Always
 
