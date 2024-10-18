@@ -72,7 +72,7 @@ func MakeInMemoryLog() *InMemoryLog {
 
 func (iml *InMemoryLog) GetEntry(idx int) Entry {
 	if idx == 0 {
-		return Entry{0}
+		return Entry{nil, 0}
 	}
 	return iml.arr[idx-1]
 }
