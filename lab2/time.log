@@ -1,0 +1,9 @@
+ESTIMATE: 8h
+```
+      Time     Time 
+Date  Started  Spent  Work completed
+----  -------  -----  --------------
+9/30  2:16     7:30   completed assignment (i legitimately didn't do much else during this time)
+
+```
+Spent way too long just throwing myself at the kubectl setup and not enough time getting outside and thinking about it. I ultimately think that's what ended up taking so long. I still feel like I don't really understand how kubectl files work. I don't know if that's a me problem or just a general issue with kubernetes? I think another thing I was annoyed by was that it feels like there is no good thread pool structure in go. That might be because of goroutines, but it seems like the natural thing to use in this assignment

@@ -1,0 +1,15 @@
+Estimate: 15h
+```
+      Time     Time 
+Date  Started  Spent  Work completed
+----  -------  -----  --------------
+9/12   6:16     3:30  read lab description and starter code
+9/14   8:16     2:00  completed short answers
+
+9/16  3:10      5:15   passed public tests
+9/20  5:00      2:15   passed wrote some tests of my own
+
+
+```
+
+I spent a lot of reading the code, like a lot more time than I really feel was necessary, but ultimately I think I got a better understanding of the process by which the code works. Specifically, how we can interact with protobuf by compiling protobuf to golang. I thought that was a really interesting process. Another thing that was helpful was learning the patterns of how to write concurrent applications like this. I think the biggest issue was finding the correct level of abstraction. Initially i wanted to pull some of the error handling into separate functions, but in the end it seemed easiest to just handle everything in the main code, which lead to a lot of repeated code, which might have been unnecessary

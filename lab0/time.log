@@ -1,0 +1,14 @@
+Estimate: 10h
+```
+      Time     Time 
+Date  Started  Spent  Work completed
+----  -------  -----  --------------
+9/12   6:16     3:30  read lab description and starter code
+9/14   8:16     2:00  completed short answers
+
+9/16  3:10      5:15   passed public tests
+9/20  5:00      2:15   wrote some tests of my own
+
+
+```
+I spent a loong time on the tour of go, which was ultimately only kind of helpful. I think the go language was pretty easy to pick up, but it wasn't really motivated, if that makes sense. I also wrestled a bit with the best way of implementing the semaphore. I was pretty against using a channel or some kind of spinlock with select, but it ended up being the only option which seemed viable. I really wanted to do something with a condition variable, because that's how I learned it, but I ultimately didn't have one available.
